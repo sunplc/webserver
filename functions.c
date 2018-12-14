@@ -210,7 +210,7 @@ int Daemonize(int errfd)
     return (int)pid;
 }
 
-// concatenate s1 and s2, storage result to dest
+// concatenate string s1 and s2, storage result to dest
 void Concat(char *dest, char *s1, char *s2)
 {
     bzero(dest, 1);
