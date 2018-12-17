@@ -5,7 +5,7 @@
 #include <stdio.h>			// perror()
 #include <stdlib.h>			// malloc() free() exit()
 #include <string.h>
-#include <unistd.h>			//  execl() access() fork() dup2() STDOUT_FILENO sleep()
+#include <unistd.h>			// execl() access() fork() dup2() STDOUT_FILENO sleep()
 #include <limits.h>         // PATH_MAX
 
 #include <errno.h>          // ECHILD
@@ -21,8 +21,8 @@
 #define BUF_SIZE 1024 * 1024	// maximum number of characters of read line
 #define SERV_PORT 8080          // HTTP port 
 
-#define DOCUMENT_ROOT "/www"   // web root path
-#define LOG_PATH "/log"        // log path
+#define DOCUMENT_ROOT "/www"    // web root path
+#define LOG_PATH "/log"         // log path
 
 #define WORKER_COUNT 5          // number of child processes
 #define MAX_REQUEST 1000        // number of maximum requests for per child
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
 
-    
+
 
     Concat(filename, cwd, LOG_PATH "/server.log");
     int errfd = open(filename, O_WRONLY | O_CREAT, 0644);
@@ -97,22 +97,22 @@ int main(int argc, char *argv[])
     WritePidFile(filename, pid);
 
     Concat(filename, cwd, LOG_PATH "/access.log");
-	FILE *accfp = fopen(filename, "a+");
-	if (accfp == NULL)
-		PerrorExit("open access.log file");
+    FILE *accfp = fopen(filename, "a+");
+    if (accfp == NULL)
+        PerrorExit("open access.log file");
 
     Concat(filename, cwd, LOG_PATH "/server.log");
-	FILE *srvfp = fopen(filename, "a+");
-	if (srvfp == NULL)
-		PerrorExit("open server.log file");
+    FILE *srvfp = fopen(filename, "a+");
+    if (srvfp == NULL)
+        PerrorExit("open server.log file");
 
     Log(srvfp, "Server started, master pid = %d", (int)pid);
     fflush(srvfp);
 
-	int listenfd, connfd;
-	listenfd = Socket(SERV_PORT);
+    int listenfd, connfd;
+    listenfd = Socket(SERV_PORT);
 
-	int i, index, status;
+    int i, index, status;
     int workers[WORKER_COUNT];
 
     // Fork n child process, storage their pid in array.
@@ -191,25 +191,25 @@ int main(int argc, char *argv[])
     fclose(srvfp);
 
     char delimiter[2] = " \0";
-	char *token, *extension;
+    char *token, *extension;
 
-	char *protocol = malloc(256);
-	char *http_method = malloc(256);
-	char *uri = malloc(256);
-	char *content_type = malloc(1024);
+    char *protocol = malloc(256);
+    char *http_method = malloc(256);
+    char *uri = malloc(256);
+    char *content_type = malloc(1024);
 
-	char buf[BUF_SIZE];
-	char str[INET_ADDRSTRLEN];
+    char buf[BUF_SIZE];
+    char str[INET_ADDRSTRLEN];
 
-	struct sockaddr_in client_addr;
-	socklen_t client_addr_len;
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len;
 
     // Loop and accept TCP connection request.
-	for (i = 0; i < MAX_REQUEST; ++i) {
+    for (i = 0; i < MAX_REQUEST; ++i) {
 
-		client_addr_len = sizeof(client_addr);
-		// Accept TCP connection.
-		connfd = Accept(listenfd, (struct sockaddr *)&client_addr, 
+        client_addr_len = sizeof(client_addr);
+        // Accept TCP connection.
+        connfd = Accept(listenfd, (struct sockaddr *)&client_addr, 
                 &client_addr_len);
 
 
@@ -331,18 +331,18 @@ int main(int argc, char *argv[])
         inet_ntop(AF_INET, &client_addr.sin_addr, str, sizeof(str));
 
         Log(accfp, "HTTP request from %s:%d, %s %s %s", 
-            str, ntohs(client_addr.sin_port), protocol, http_method, uri);
+                str, ntohs(client_addr.sin_port), protocol, http_method, uri);
 
         fflush(accfp);
 
         // Close TCP connection.
         Close(connfd);
-	}
+    }
 
 
-	free(protocol);
-	free(http_method);
-	free(uri);
+    free(protocol);
+    free(http_method);
+    free(uri);
     free(content_type);
 
     return 0; // Every child process terminated here.
