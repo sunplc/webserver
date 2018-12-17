@@ -291,7 +291,8 @@ int main(int argc, char *argv[])
                 } else if (exec_pid == 0) {
                     // Close STDOUT_FILENO, copy connfd to STDOUT_FILENO.
                     dup2(connfd, STDOUT_FILENO);
-                    // exec function family will start a new process
+                    // exec function family will replace current process
+                    // with the specified program image
                     execl(filename, "nothing", NULL);
                     // won't execute this sentence otherwise execl failed
                     exit(EXIT_SUCCESS);
