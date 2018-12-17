@@ -9,3 +9,5 @@ echo > log/server.log
 
 make clean && make
 
+# ./webserver start
+

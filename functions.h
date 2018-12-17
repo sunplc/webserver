@@ -25,6 +25,8 @@ void Close(int fd);
 
 int rtrim(char *str, char c);
 
+void PrintTime();
+
 void Log(FILE *fp, char *fmt, ...);
 
 int Daemonize(int);

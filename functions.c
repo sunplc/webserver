@@ -8,6 +8,7 @@
 #include <netinet/in.h> // IPPROTO_TCP
 #include <stdarg.h>
 #include <time.h>
+#include <sys/time.h>   // struct timeval.tv_usec
 #include <limits.h>         // PATH_MAX
 
 void PerrorExit(const char *s)
@@ -159,6 +160,22 @@ int rtrim(char *str, char c)
 	return 0;
 }
 
+// print current date time milliseconds
+void PrintTime()
+{
+    time_t timer;
+    time(&timer); // 获取当前时间; 等同于 timer = time(NULL);
+
+    struct tm *p = localtime(&timer);
+
+    struct timeval te;  // 获取毫秒
+    gettimeofday(&te, NULL); // get current time
+
+    printf("[%d-%02d-%02d %02d:%02d:%02d.%03ld]\n",
+            (1900+p->tm_year), (1+p->tm_mon), p->tm_mday,
+            p->tm_hour, p->tm_min, p->tm_sec, te.tv_usec / 1000);
+}
+
 // 写日志到日志文件
 void Log(FILE *fp, char *fmt, ...)
 {
@@ -167,12 +184,15 @@ void Log(FILE *fp, char *fmt, ...)
 
     struct tm *p = localtime(&timer);
 
+    struct timeval te;  // 获取毫秒
+    gettimeofday(&te, NULL); // get current time
+
     va_list args;
     va_start(args, fmt);
 
-    fprintf(fp, "[%d-%02d-%02d %02d:%02d:%02d] ",
+    fprintf(fp, "[%d-%02d-%02d %02d:%02d:%02d.%06ld] ",
             (1900+p->tm_year), (1+p->tm_mon), p->tm_mday,
-            p->tm_hour, p->tm_min, p->tm_sec);
+            p->tm_hour, p->tm_min, p->tm_sec, te.tv_usec);
 
     vfprintf(fp, fmt, args);
     fprintf(fp, "\n");

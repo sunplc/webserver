@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
         PerrorExit("open() errfd");
     }
 
-    pid = Daemonize(errfd);
+    pid = Daemonize(errfd); // daemon start
+    //pid = getpid();       // debug start
 
     Concat(filename, cwd, "/webserver.pid");
     WritePidFile(filename, pid);
@@ -253,6 +254,12 @@ int main(int argc, char *argv[])
             }
         }
 
+        // Get Client ip and port.
+        inet_ntop(AF_INET, &client_addr.sin_addr, str, sizeof(str));
+
+        Log(accfp, "HTTP request from %s:%d, %s %s %s", 
+                str, ntohs(client_addr.sin_port), protocol, http_method, uri);
+
         // Returns the index file if the root directory is requested.
         if (strcmp(uri, "/") == 0) {
             Concat(filename, cwd, DOCUMENT_ROOT "/index.html");
@@ -277,9 +284,22 @@ int main(int argc, char *argv[])
                 // Send blank line, indicates the end of response headers.
                 Write(connfd, "\r\n", 2);
 
-                // Close STDOUT_FILENO, copy connfd to STDOUT_FILENO.
-                dup2(connfd, STDOUT_FILENO);
-                execl(filename, "nothing", NULL);
+
+                pid_t exec_pid = fork();
+                if (exec_pid < 0) {
+                    Log(accfp, "fork to exec program failed");
+                } else if (exec_pid == 0) {
+                    // Close STDOUT_FILENO, copy connfd to STDOUT_FILENO.
+                    dup2(connfd, STDOUT_FILENO);
+                    // exec function family will start a new process
+                    execl(filename, "nothing", NULL);
+                    // won't execute this sentence otherwise execl failed
+                    exit(EXIT_SUCCESS);
+                } else {
+                    Log(accfp, "worker #%d forked a child to execute "
+                            "program \"%s\"", getpid(), filename);
+                }
+
 
             } else {
 
@@ -325,13 +345,9 @@ int main(int argc, char *argv[])
             }
 
             Close(fd);
+            //Log(accfp, "mark"); 
         }
 
-        // Get Client ip and port.
-        inet_ntop(AF_INET, &client_addr.sin_addr, str, sizeof(str));
-
-        Log(accfp, "HTTP request from %s:%d, %s %s %s", 
-                str, ntohs(client_addr.sin_port), protocol, http_method, uri);
 
         fflush(accfp);
 
