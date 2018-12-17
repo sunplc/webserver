@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
                     // exec function family will replace current process
                     // with the specified program image
                     execl(filename, "nothing", NULL);
-                    // won't execute this sentence otherwise execl failed
+                    // won't execute this sentence unless execl failed
                     exit(EXIT_SUCCESS);
                 } else {
                     Log(accfp, "worker #%d forked a child to execute "
