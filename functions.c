@@ -168,7 +168,7 @@ void PrintTime()
 
     struct tm *p = localtime(&timer);
 
-    struct timeval te;  // 获取毫秒
+    struct timeval te;  // 获取微秒 μs
     gettimeofday(&te, NULL); // get current time
 
     printf("[%d-%02d-%02d %02d:%02d:%02d.%03ld]\n",
@@ -184,7 +184,7 @@ void Log(FILE *fp, char *fmt, ...)
 
     struct tm *p = localtime(&timer);
 
-    struct timeval te;  // 获取毫秒
+    struct timeval te;  // 获取微秒 μs
     gettimeofday(&te, NULL); // get current time
 
     va_list args;
