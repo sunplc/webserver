@@ -39,8 +39,10 @@ int main(int argc, char *argv[])
 
 
     if (argc == 2) {
+        // start server
         if (strcmp(argv[1], "start") == 0) {
 
+        // stop server
         } else if (strcmp(argv[1], "stop") == 0) {
 
             Concat(filename, cwd, "/webserver.pid");
@@ -84,7 +86,7 @@ int main(int argc, char *argv[])
     }
 
 
-
+    // open log file
     Concat(filename, cwd, LOG_PATH "/server.log");
     int errfd = open(filename, O_WRONLY | O_CREAT, 0644);
     if (errfd < 0) {
@@ -94,14 +96,17 @@ int main(int argc, char *argv[])
     pid = Daemonize(errfd); // daemon start
     //pid = getpid();       // debug start
 
+    // open pid file
     Concat(filename, cwd, "/webserver.pid");
     WritePidFile(filename, pid);
 
+    // open log file
     Concat(filename, cwd, LOG_PATH "/access.log");
     FILE *accfp = fopen(filename, "a+");
     if (accfp == NULL)
         PerrorExit("open access.log file");
 
+    // open log file
     Concat(filename, cwd, LOG_PATH "/server.log");
     FILE *srvfp = fopen(filename, "a+");
     if (srvfp == NULL)
@@ -116,7 +121,7 @@ int main(int argc, char *argv[])
     int i, index, status;
     int workers[WORKER_COUNT];
 
-    // Fork n child process, storage their pid in array.
+    // Fork N child process, storage their pid in array.
     for (i = 0; i < WORKER_COUNT; ++i) {
         if ((pid = fork()) < 0) {
             PerrorExit("failed to fork");
@@ -181,7 +186,7 @@ int main(int argc, char *argv[])
 
         }
 
-        // Master end.
+        // Master process terminate when all child process ended.
         if (pid > 0) {
             return 0;
         }

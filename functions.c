@@ -20,8 +20,10 @@ void PerrorExit(const char *s)
 int Socket(int port)
 {
 	int sockfd;
-	if ( (sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+
+	if ( (sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		PerrorExit("socket error");
+    }
 
     int optval = 0;
 	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
@@ -35,12 +37,14 @@ int Socket(int port)
 	server_addr.sin_port = htons(port);
 
 	if (bind(sockfd, (struct sockaddr *) &server_addr,
-                sizeof(server_addr)) <  0)
+                sizeof(server_addr)) <  0) {
 		PerrorExit("bind error");
+    }
 
     // start listen, backlog is 20
-	if (listen(sockfd, 100) < 0)
+	if (listen(sockfd, 100) < 0) {
 		PerrorExit("listen error");
+    }
 
 	return sockfd;
 }
