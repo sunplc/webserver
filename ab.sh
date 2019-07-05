@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#查看应用服务器和数据库均未报错，连接被重置，bingyi了以下，apr_socket_recv这个是操作系统内核的一个参数，在高并发的情况下，内核会认为系统受到了SYN flood攻击，会发送cookies（possible SYN flooding on port 80. Sending cookies），这样会减慢影响请求的速度，所以在应用服务武器上设置下这个参数为0禁用系统保护就可以进行大并发测试了：
+# apr_socket_recv这个是操作系统内核的一个参数，在高并发的情况下，内核会认为系统受到了SYN flood攻击，会发送cookies（possible SYN flooding on port 80. Sending cookies），这样会减慢影响请求的速度，所以在应用服务武器上设置下这个参数为0禁用系统保护就可以进行大并发测试了：
 
 # vim /etc/sysctl.conf 
 # net.ipv4.tcp_syncookies = 0
@@ -23,7 +23,6 @@
  
 # net.ipv4.tcp_max_tw_buckets
 #参数决定TIME_WAIT状态的sockets总数量，可根据连接数和系统资源需要进行设置。 
-
 
 
 # 并发过高会被系统限制

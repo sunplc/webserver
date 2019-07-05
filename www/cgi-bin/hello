@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "<html><body>
+<h1>Hello, who are you?</h1>
+<h1>Where are you from?</h1>
+<h1>What are you doing here?</h1>
+</body></html>"
+
+printf "\r\n"
