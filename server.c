@@ -1,5 +1,5 @@
 /**
- * multiple processes webserver
+ * multiple thread webserver
  */
 
 #include <stdio.h>			// perror()
@@ -25,7 +25,7 @@
 #define LOG_PATH "/log"         // log path
 
 #define WORKER_COUNT 5          // number of child processes
-#define MAX_REQUEST 1000        // number of maximum requests for per child
+#define MAX_REQUEST 10000       // number of maximum requests for per child
 
 int main(int argc, char *argv[])
 {
@@ -41,6 +41,13 @@ int main(int argc, char *argv[])
     if (argc == 2) {
         // start server
         if (strcmp(argv[1], "start") == 0) {
+
+            Concat(filename, cwd, "/webserver.pid");
+            int master_pid = ReadPidFile(filename);
+            if (master_pid > 0) {
+                puts("webserver is already running");
+                exit(EXIT_SUCCESS);
+            }
 
         // stop server
         } else if (strcmp(argv[1], "stop") == 0) {
@@ -93,8 +100,8 @@ int main(int argc, char *argv[])
         PerrorExit("open() errfd");
     }
 
-    pid = Daemonize(errfd); // daemon start
-    // pid = getpid();       // debug start
+    //pid = Daemonize(errfd); // daemon start
+    pid = getpid();       // debug start
 
     // open pid file
     Concat(filename, cwd, "/webserver.pid");
@@ -118,83 +125,8 @@ int main(int argc, char *argv[])
     int listenfd, connfd;
     listenfd = Socket(SERV_PORT);
 
-    int i, index, status;
-    int workers[WORKER_COUNT];
+    int i;
 
-    // Fork N child process, storage their pid in array.
-    for (i = 0; i < WORKER_COUNT; ++i) {
-        if ((pid = fork()) < 0) {
-            PerrorExit("failed to fork");
-        } else if (pid > 0) {
-            workers[i] = pid;
-        } else {
-            break;
-        }
-
-        Log(srvfp, "Fork Worker #%d", (int)pid);
-        fflush(srvfp);
-    }
-
-
-    // Parent process logic.
-    if (pid > 0) {
-
-        // Loop and block to wait child process terminate.
-        for (i = 0; ; ++i) {
-
-            if ((pid = wait(&status)) == -1) {
-                if (errno == ECHILD) {
-                    Log(srvfp, "ECHILD");
-                } else {
-                    Log(srvfp, "wait() error");
-                }
-
-            } else {
-
-                // Child process terminated normally from exit or _exit.
-                if (WIFEXITED(status)) {
-                    Log(srvfp, "child #%d exited with status %d",
-                            pid, WEXITSTATUS(status));
-
-                } else { // Terminated abnormally.
-
-                    Log(srvfp, "child #%d terminated abnormally"
-                            " with status %d", (int)pid, status);
-                }
-
-                // Get the index of terminated child.
-                for (index = 0; index < WORKER_COUNT; ++index) {
-                    if (workers[index] == (int)pid)
-                        break;
-                }
-
-                if (index == WORKER_COUNT) {
-                    Log(srvfp, "worker's pid error!");
-                }
-
-                fflush(srvfp);
-
-                if ((pid = fork()) < 0) {
-                    Log(srvfp, "failed to fork");
-                } else if (pid > 0) {
-                    Log(srvfp, "#%d create proc #%d", getpid(), pid);
-                    //sleep(1);
-                    workers[index] = pid;
-                } else {
-                    break;
-                }
-            }
-
-        }
-
-        // Master process terminate when all child process ended.
-        if (pid > 0) {
-            return 0;
-        }
-    }
-
-
-    // Child worker process logic.
     fclose(srvfp);
 
     char delimiter[2] = " \0";
