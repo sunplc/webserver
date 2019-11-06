@@ -210,8 +210,7 @@ int Daemonize(int errfd)
     // fork child process insure current process isn't group leader
     pid_t pid = fork();
     if (pid < 0) {
-        perror("fork()");
-        exit(1);
+        PerrorExit("fork()");
     } else if (pid > 0) {
         exit(0);
     }
@@ -220,15 +219,17 @@ int Daemonize(int errfd)
     // new session leader and process group leader
     pid = setsid();
 
-    // change work dir to /
+    // change work directory to root directory
     if (chdir("/") < 0) {
-        perror("chdir()");
-        exit(1);
+        PerrorExit("chdir()");
     }
 
+    // close STDIN and open /dev/null as STDIN fd
     close(0);
     open("/dev/null", O_RDWR);
+    // duplicate STDIN to STDOUT
     dup2(0, 1);
+    // duplicate error log fd to STDERR
     dup2(errfd, 2);
 
     return (int)pid;

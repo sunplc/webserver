@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     }
 
     pid = Daemonize(errfd); // daemon start
-    //pid = getpid();       // debug start
+    // pid = getpid();       // debug start
 
     // open pid file
     Concat(filename, cwd, "/webserver.pid");
@@ -130,6 +130,7 @@ int main(int argc, char *argv[])
         } else {
             break;
         }
+
         Log(srvfp, "Fork Worker #%d", (int)pid);
         fflush(srvfp);
     }
