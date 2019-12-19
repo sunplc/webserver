@@ -226,9 +226,13 @@ int Daemonize(int errfd)
         exit(1);
     }
 
+    // close STDIN
     close(0);
+    // open /dev/null as STDIN
     open("/dev/null", O_RDWR);
+    // copy STDOUT to STDIN which is /dev/null
     dup2(0, 1);
+    // copy errfd as STDERR
     dup2(errfd, 2);
 
     return (int)pid;

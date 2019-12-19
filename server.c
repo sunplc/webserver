@@ -18,30 +18,31 @@
 
 #include "functions.h"
 
-#define BUF_SIZE 1024 * 1024	// maximum number of characters of read line
 #define SERV_PORT 8080          // HTTP port 
 
-#define DOCUMENT_ROOT "/www"    // web root path
+#define DOCUMENT_PATH "/www"    // web root path
 #define LOG_PATH "/log"         // log path
 
 #define WORKER_COUNT 5          // number of child processes
 #define MAX_REQUEST 1000        // number of maximum requests for per child
+#define BUF_SIZE 1024 * 1024	// maximum number of characters of read line
 
-int main(int argc, char *argv[])
+char filename[PATH_MAX], cwd[PATH_MAX];
+
+int errfd;
+FILE *accfp, *srvfp;
+
+void CheckCommandLine(int argc, char **argv)
 {
-    char filename[PATH_MAX], cwd[PATH_MAX];
-    pid_t pid;
-
     // Get current working directory.
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         PerrorExit("getcwd()");
     }
 
-
     if (argc == 2) {
         // start server
         if (strcmp(argv[1], "start") == 0) {
-
+            return;
         // stop server
         } else if (strcmp(argv[1], "stop") == 0) {
 
@@ -71,129 +72,39 @@ int main(int argc, char *argv[])
             }
 
             exit(EXIT_SUCCESS);
-
-        } else {
-
-            printf("Usage:\n webserver start\n"
-                    " webserver stop\n webserver status\n");
-            exit(EXIT_SUCCESS);
         }
-
-    } else {
-        printf("Usage:\n webserver start\n"
-                " webserver stop\n webserver status\n");
-        exit(EXIT_SUCCESS);
     }
 
+    printf("Usage:\n webserver start\n"
+            " webserver stop\n webserver status\n");
+    exit(EXIT_SUCCESS);
+}
 
+void OpenLogFiles()
+{
     // open log file
     Concat(filename, cwd, LOG_PATH "/server.log");
-    int errfd = open(filename, O_WRONLY | O_CREAT, 0644);
+    errfd = open(filename, O_WRONLY | O_CREAT, 0644);
     if (errfd < 0) {
         PerrorExit("open() errfd");
     }
 
-    pid = Daemonize(errfd); // daemon start
-    //pid = getpid();       // debug start
-
-    // open pid file
-    Concat(filename, cwd, "/webserver.pid");
-    WritePidFile(filename, pid);
-
     // open log file
     Concat(filename, cwd, LOG_PATH "/access.log");
-    FILE *accfp = fopen(filename, "a+");
+    accfp = fopen(filename, "a+");
     if (accfp == NULL)
         PerrorExit("open access.log file");
 
     // open log file
     Concat(filename, cwd, LOG_PATH "/server.log");
-    FILE *srvfp = fopen(filename, "a+");
+    srvfp = fopen(filename, "a+");
     if (srvfp == NULL)
         PerrorExit("open server.log file");
+}
 
-    Log(srvfp, "Server started, master pid = %d", (int)pid);
-    fflush(srvfp);
-
-    int listenfd, connfd;
-    listenfd = Socket(SERV_PORT);
-
-    int i, index, status;
-    int workers[WORKER_COUNT];
-
-    // Fork N child process, storage their pid in array.
-    for (i = 0; i < WORKER_COUNT; ++i) {
-        if ((pid = fork()) < 0) {
-            PerrorExit("failed to fork");
-        } else if (pid > 0) {
-            workers[i] = pid;
-        } else {
-            break;
-        }
-        Log(srvfp, "Fork Worker #%d", (int)pid);
-        fflush(srvfp);
-    }
-
-
-    // Parent process logic.
-    if (pid > 0) {
-
-        // Loop and block to wait child process terminate.
-        for (i = 0; ; ++i) {
-
-            if ((pid = wait(&status)) == -1) {
-                if (errno == ECHILD) {
-                    Log(srvfp, "ECHILD");
-                } else {
-                    Log(srvfp, "wait() error");
-                }
-
-            } else {
-
-                // Child process terminated normally from exit or _exit.
-                if (WIFEXITED(status)) {
-                    Log(srvfp, "child #%d exited with status %d",
-                            pid, WEXITSTATUS(status));
-
-                } else { // Terminated abnormally.
-
-                    Log(srvfp, "child #%d terminated abnormally"
-                            " with status %d", (int)pid, status);
-                }
-
-                // Get the index of terminated child.
-                for (index = 0; index < WORKER_COUNT; ++index) {
-                    if (workers[index] == (int)pid)
-                        break;
-                }
-
-                if (index == WORKER_COUNT) {
-                    Log(srvfp, "worker's pid error!");
-                }
-
-                fflush(srvfp);
-
-                if ((pid = fork()) < 0) {
-                    Log(srvfp, "failed to fork");
-                } else if (pid > 0) {
-                    Log(srvfp, "#%d create proc #%d", getpid(), pid);
-                    //sleep(1);
-                    workers[index] = pid;
-                } else {
-                    break;
-                }
-            }
-
-        }
-
-        // Master process terminate when all child process ended.
-        if (pid > 0) {
-            return 0;
-        }
-    }
-
-
-    // Child worker process logic.
+// Child worker process logic.
+void ChildProcess(int listenfd)
+{
     fclose(srvfp);
 
     char delimiter[2] = " \0";
@@ -207,17 +118,18 @@ int main(int argc, char *argv[])
     char buf[BUF_SIZE];
     char str[INET_ADDRSTRLEN];
 
+    int connfd;
     struct sockaddr_in client_addr;
     socklen_t client_addr_len;
 
     // Loop and accept TCP connection request.
+    int i;
     for (i = 0; i < MAX_REQUEST; ++i) {
 
         client_addr_len = sizeof(client_addr);
         // Accept TCP connection.
         connfd = Accept(listenfd, (struct sockaddr *)&client_addr, 
                 &client_addr_len);
-
 
         // Parse HTTP header
         if (Readline(connfd, buf, BUF_SIZE) == 0) {
@@ -255,7 +167,8 @@ int main(int argc, char *argv[])
             ++extension;
             //printf("extension=%s\n", extension);
             if (strcmp(extension, "jpg") == 0) {
-                sprintf(content_type, "content-type: %s/%s\r\n", "image", "jpeg");
+                sprintf(content_type, "content-type: %s/%s\r\n",
+                        "image", "jpeg");
             }
         }
 
@@ -263,14 +176,15 @@ int main(int argc, char *argv[])
         inet_ntop(AF_INET, &client_addr.sin_addr, str, sizeof(str));
 
         Log(accfp, "HTTP request from %s:%d, %s %s %s", 
-                str, ntohs(client_addr.sin_port), protocol, http_method, uri);
+                str, ntohs(client_addr.sin_port), protocol,
+                http_method, uri);
 
         // Returns the index file if the root directory is requested.
         if (strcmp(uri, "/") == 0) {
-            Concat(filename, cwd, DOCUMENT_ROOT "/index.html");
+            Concat(filename, cwd, DOCUMENT_PATH "/index.html");
         } else {
             strcpy(filename, uri);
-            strcpy(uri, DOCUMENT_ROOT);
+            strcpy(uri, DOCUMENT_PATH);
             strcat(uri, filename);
             Concat(filename, cwd, uri);
         }
@@ -304,8 +218,8 @@ int main(int argc, char *argv[])
                 } else {
                     Log(accfp, "worker #%d forked a child to execute "
                             "program \"%s\"", getpid(), filename);
+                    waitpid(exec_pid, NULL, 0);
                 }
-
 
             } else {
 
@@ -340,7 +254,7 @@ int main(int argc, char *argv[])
             Write(connfd, "\r\n", 2);
 
             // Open 404.html, read content as http response body.
-            Concat(filename, cwd, DOCUMENT_ROOT "/404.html");
+            Concat(filename, cwd, DOCUMENT_PATH "/404.html");
             int fd = open(filename, O_RDONLY);
             if (fd < 0) {
                 PerrorExit("failed open 404.html file");
@@ -354,19 +268,104 @@ int main(int argc, char *argv[])
             //Log(accfp, "mark"); 
         }
 
-
         fflush(accfp);
 
         // Close TCP connection.
         Close(connfd);
     }
 
-
     free(protocol);
     free(http_method);
     free(uri);
     free(content_type);
 
-    return 0; // Every child process terminated here.
+    exit(0);
+}
+
+int main(int argc, char *argv[])
+{
+    CheckCommandLine(argc, argv);
+    OpenLogFiles();
+
+    pid_t pid;
+    pid = Daemonize(errfd); // daemon start
+    //pid = getpid();       // debug start
+
+    // Write pid to file
+    Concat(filename, cwd, "/webserver.pid");
+    WritePidFile(filename, pid);
+
+    Log(srvfp, "Server started, master pid = %d", (int)pid);
+    fflush(srvfp);
+
+    int listenfd;
+    listenfd = Socket(SERV_PORT);
+
+    int i, index, status;
+    int workers[WORKER_COUNT];
+
+    // Fork N child process, storage their pid in array.
+    for (i = 0; i < WORKER_COUNT; ++i) {
+        if ((pid = fork()) < 0) {
+            PerrorExit("failed to fork");
+        } else if (pid > 0) {
+            workers[i] = pid;
+        } else {
+            ChildProcess(listenfd);
+        }
+        Log(srvfp, "Fork Worker #%d", (int)pid);
+        fflush(srvfp);
+    }
+
+    // Parent process logic.
+    // Loop and block to wait child process terminate.
+    for (i = 0; ; ++i) {
+
+        if ((pid = wait(&status)) == -1) {
+            if (errno == ECHILD) {
+                Log(srvfp, "ECHILD");
+            } else {
+                Log(srvfp, "wait() error");
+            }
+
+        } else {
+
+            // Child process terminated normally from exit or _exit.
+            if (WIFEXITED(status)) {
+                Log(srvfp, "child #%d exited with status %d",
+                        pid, WEXITSTATUS(status));
+
+            } else { // Terminated abnormally.
+
+                Log(srvfp, "child #%d terminated abnormally"
+                        " with status %d", (int)pid, status);
+            }
+
+            // Get the index of terminated child.
+            for (index = 0; index < WORKER_COUNT; ++index) {
+                if (workers[index] == (int)pid)
+                    break;
+            }
+
+            if (index <= 0 || index >= WORKER_COUNT) {
+                Log(srvfp, "worker's pid error!");
+            }
+
+            fflush(srvfp);
+
+            if ((pid = fork()) < 0) {
+                Log(srvfp, "failed to fork");
+            } else if (pid > 0) {
+                Log(srvfp, "#%d create proc #%d", getpid(), pid);
+                //sleep(1);
+                workers[index] = pid;
+            } else {
+                ChildProcess(listenfd);
+            }
+        }
+    }
+
+    // main process terminated
+    return 0;
 }
 
