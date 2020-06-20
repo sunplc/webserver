@@ -103,6 +103,7 @@ void OpenLogFiles()
 }
 
 // Child worker process logic.
+// Process the HTTP protocol
 void ChildProcess(int listenfd)
 {
     fclose(srvfp);
