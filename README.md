@@ -1,4 +1,4 @@
-# build this project to learn multiprocessing multithreading multiplex
+# I build this project for learn multiprocessing, multithreading and multiplex
 
 ## compile project
 ```
