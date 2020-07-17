@@ -1,14 +1,14 @@
-# 一个简单的多进程版 web server
+# build this project to learn multiprocessing multithreading multiplex
 
-编译
+## compile project
 ```
 make
 ```
-运行
+## run
 ```
 ./webserver start
 ```
-停止
+## stop
 ```
 ./webserver stop
 ```
